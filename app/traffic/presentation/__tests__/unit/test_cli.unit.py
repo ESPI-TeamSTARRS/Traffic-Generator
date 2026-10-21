@@ -9,8 +9,11 @@ from app.traffic.presentation import cli
 
 
 def test_parser_defaults_and_options() -> None:
-    args = cli.build_parser().parse_args(["--minutes", "5", "--sessions-per-minute", "10", "--seed", "3"])
+    args = cli.build_parser().parse_args(
+        ["--minutes", "5", "--sessions-per-minute", "10", "--seed", "3", "--day-minutes", "30", "--refusal-rate", "0.1"]
+    )
     assert (args.minutes, args.sessions_per_minute, args.seed) == (5.0, 10.0, 3)
+    assert (args.day_minutes, args.refusal_rate, args.night_factor) == (30.0, 0.1, 0.15)
 
 
 def test_format_report_names_network_errors() -> None:

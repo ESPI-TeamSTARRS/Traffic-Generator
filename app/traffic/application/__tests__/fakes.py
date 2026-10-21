@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from app.traffic.domain.entities.shop_response import ShopResponse
 from app.traffic.domain.enums.product_category import ProductCategory
@@ -9,12 +9,19 @@ CATALOG_BODY = {
         {"id": "p1", "slug": "tente-a"},
         {"id": "p2", "slug": "sac-b"},
         {"id": "p3", "slug": "duvet-c"},
+        {"id": "p4", "slug": "rechaud-d"},
+        {"id": "p5", "slug": "frontale-e"},
+        {"id": "p6", "slug": "gourde-f"},
     ]
 }
+KNOWN_SLUGS = {item["slug"] for item in CATALOG_BODY["items"]}
 
 
 class FakeShopGateway:
-    """Enregistre les appels (nom, argument) et renvoie des réponses programmables."""
+    """Enregistre les appels (nom, argument) et renvoie des réponses programmables.
+
+    Un slug absent du catalogue renvoie 404, comme le vrai shop.
+    """
 
     def __init__(self, catalog: ShopResponse | None = None, default_status: int = 200) -> None:
         self.calls: list[tuple[str, object]] = []
@@ -30,6 +37,8 @@ class FakeShopGateway:
 
     def get_product(self, slug: str, correlation_id: str) -> ShopResponse:
         self._note("get_product", slug, correlation_id)
+        if self._default_status == 200 and slug not in KNOWN_SLUGS:
+            return ShopResponse(404)
         return ShopResponse(self._default_status)
 
     def quote_cart(self, lines: Sequence[CartLine], correlation_id: str) -> ShopResponse:
@@ -61,3 +70,18 @@ class FakeTimer:
     def sleep(self, seconds: float) -> None:
         self.sleeps.append(seconds)
         self.current += seconds
+
+
+class InlineSpawner:
+    """Exécute chaque session tout de suite, dans le thread appelant (tests déterministes)."""
+
+    def __init__(self) -> None:
+        self.spawned = 0
+        self.waited = False
+
+    def spawn(self, task: Callable[[], None]) -> None:
+        self.spawned += 1
+        task()
+
+    def wait(self) -> None:
+        self.waited = True

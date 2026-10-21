@@ -2,29 +2,44 @@ from random import Random
 
 from app.traffic.application.browse_shop import BrowseShop
 from app.traffic.domain.entities.traffic_report import TrafficReport
+from app.traffic.domain.interfaces.spawner import Spawner
 from app.traffic.domain.interfaces.timer import Timer
+from app.traffic.domain.services.load_profile import LoadProfile
 
 SECONDS_PER_MINUTE = 60
 
 
 class RunTraffic:
-    """Enchaîne des sessions de visiteurs pendant une durée donnée, à un rythme nominal de sessions par minute."""
+    """Fait arriver des visiteurs pendant une durée donnée.
 
-    def __init__(self, browse: BrowseShop, timer: Timer, rng: Random) -> None:
+    Les arrivées suivent un processus de Poisson dont le rythme (`sessions_per_minute` = rythme de pointe) varie avec
+    le profil de charge (jour/nuit). Chaque visiteur est lancé en parallèle avec son propre générateur aléatoire,
+    tiré du générateur principal : une même graine redonne le même trafic.
+    """
+
+    def __init__(self, browse: BrowseShop, timer: Timer, rng: Random, spawner: Spawner, load: LoadProfile) -> None:
         self._browse = browse
         self._timer = timer
         self._rng = rng
+        self._spawner = spawner
+        self._load = load
 
     def execute(self, duration_seconds: float, sessions_per_minute: float) -> TrafficReport:
         if duration_seconds <= 0 or sessions_per_minute <= 0:
             raise ValueError("duration_seconds and sessions_per_minute must be positive")
         report = TrafficReport()
-        deadline = self._timer.now() + duration_seconds
-        mean_gap = SECONDS_PER_MINUTE / sessions_per_minute
+        started = self._timer.now()
+        deadline = started + duration_seconds
         while self._timer.now() < deadline:
-            started = self._timer.now()
-            self._browse.execute(report)
-            gap = self._rng.expovariate(1 / mean_gap)  # écart entre DÉBUTS de sessions : la durée de la session compte
-            wait = min(gap - (self._timer.now() - started), deadline - self._timer.now())
-            self._timer.sleep(max(0.0, wait))
+            rate = sessions_per_minute * self._load.factor(self._timer.now() - started)
+            gap = self._rng.expovariate(rate / SECONDS_PER_MINUTE)
+            self._timer.sleep(max(0.0, min(gap, deadline - self._timer.now())))
+            if self._timer.now() >= deadline:
+                break
+            self._start_session(report)
+        self._spawner.wait()
         return report
+
+    def _start_session(self, report: TrafficReport) -> None:
+        visitor_rng = Random(self._rng.getrandbits(64))
+        self._spawner.spawn(lambda: self._browse.execute(report, visitor_rng))
