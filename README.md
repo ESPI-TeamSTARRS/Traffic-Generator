@@ -176,6 +176,19 @@ uv run pre-commit install --install-hooks
 Le hook `pre-push` demande le binaire `gitleaks` sur le PATH, en version 8.30.1 (la même que la CI) :
 voir [gitleaks](https://github.com/gitleaks/gitleaks#installing) (par exemple `winget install gitleaks`, ou `scoop install gitleaks`).
 
+### Intégration continue
+
+`.github/workflows/ci.yml` tourne sur chaque PR vers `main` et à chaque push sur `main`. Il rejoue les tâches des hooks :
+
+| Job | Contenu |
+|---|---|
+| `python` | installation figée (`uv sync`, Python 3.12, roues uniquement), `poe quality`, `poe test` (couverture ≥ 80 %), `poe security` |
+| `secrets-scan` | gitleaks (v8.30.1, archive vérifiée par son SHA-256) sur les seuls commits apportés par la PR ou le push |
+| `pr-title` | le titre de la PR respecte Conventional Commits (même script que le hook `commit-msg`) |
+| `ci-ok` | job final, **seul check à rendre obligatoire** dans la protection de la branche `main` |
+
+Pour rejouer la CI en local : `uv run poe check`. Les actions GitHub sont épinglées par SHA complet.
+
 ## Limites
 
 - Trafic normal uniquement : pas de flood (à ajouter comme nouveau cas d'usage dans `application/`).
