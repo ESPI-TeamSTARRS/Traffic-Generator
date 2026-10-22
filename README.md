@@ -189,6 +189,8 @@ voir [gitleaks](https://github.com/gitleaks/gitleaks#installing) (par exemple `w
 
 Pour rejouer la CI en local : `uv run poe check`. Les actions GitHub sont épinglées par SHA complet.
 
+Documentation détaillée : [runbook CI](docs/ci.md), [publier un changement](docs/publier.md), [retour arrière](docs/retour-arriere.md).
+
 ## Limites
 
 - Trafic normal uniquement : pas de flood (à ajouter comme nouveau cas d'usage dans `application/`).
