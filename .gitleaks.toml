@@ -1,0 +1,4 @@
+title = "Traffic-Generator gitleaks"
+
+[extend]
+useDefault = true
