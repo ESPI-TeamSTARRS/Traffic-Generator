@@ -1,4 +1,5 @@
 from http.cookiejar import DefaultCookiePolicy
+from typing import Any
 
 import httpx
 
@@ -22,13 +23,19 @@ class HttpxRequester:
         self._prefix = prefix
 
     def send(
-        self, method: str, path: str, correlation_id: str, token: str | None = None, **kwargs: object
+        self,
+        method: str,
+        path: str,
+        correlation_id: str,
+        token: str | None = None,
+        headers: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> ShopResponse:
-        headers = {CORRELATION_HEADER: correlation_id, **kwargs.pop("headers", {})}  # type: ignore[call-overload]
+        all_headers = {CORRELATION_HEADER: correlation_id, **(headers or {})}
         if token:
-            headers["Authorization"] = f"Bearer {token}"
+            all_headers["Authorization"] = f"Bearer {token}"
         try:
-            response = self._client.request(method, self._prefix + path, headers=headers, **kwargs)  # type: ignore[arg-type]
+            response = self._client.request(method, self._prefix + path, headers=all_headers, **kwargs)
         except httpx.HTTPError:
             return ShopResponse(status_code=TRANSPORT_ERROR)
         return ShopResponse(status_code=response.status_code, body=self._json_object(response))

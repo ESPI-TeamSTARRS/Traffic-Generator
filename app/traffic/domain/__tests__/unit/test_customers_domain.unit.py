@@ -30,6 +30,7 @@ class ClockStub:
 
 # --- TokenBucket ------------------------------------------------------------------
 
+
 def test_bucket_starts_full_and_refuses_beyond_the_burst() -> None:
     bucket = TokenBucket(ClockStub(), per_minute=6, burst=3)
     assert [bucket.try_acquire() for _ in range(4)] == [True, True, True, False]
@@ -49,7 +50,7 @@ def test_bucket_refills_with_time_up_to_the_burst() -> None:
 def test_bucket_cost_takes_several_tokens_at_once_or_none() -> None:
     bucket = TokenBucket(ClockStub(), per_minute=6, burst=4)
     assert bucket.try_acquire(3) is True
-    assert bucket.try_acquire(3) is False       # il n'en reste qu'un : rien n'est consommé
+    assert bucket.try_acquire(3) is False  # il n'en reste qu'un : rien n'est consommé
     assert bucket.try_acquire(1) is True
 
 
@@ -66,6 +67,7 @@ def test_bucket_rejects_a_cost_outside_the_burst(cost: int) -> None:
 
 
 # --- Comptes et commandes ----------------------------------------------------------
+
 
 def test_account_factory_makes_unique_valid_credentials() -> None:
     rng, factory = Random(1), AccountFactory()

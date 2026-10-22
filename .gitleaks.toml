@@ -1,0 +1,11 @@
+title = "Traffic-Generator gitleaks"
+
+[extend]
+useDefault = true
+
+# Les tests utilisent de faux identifiants (jetons, identifiants de corrélation) : la règle générique les confond avec
+# des clés d'API. Exception limitée à cette seule règle et aux seuls dossiers de tests.
+[[allowlists]]
+description = "Faux jetons et identifiants des tests"
+targetRules = ["generic-api-key"]
+paths = ['''__tests__/''']

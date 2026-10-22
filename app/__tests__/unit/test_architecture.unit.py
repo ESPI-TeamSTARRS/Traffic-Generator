@@ -1,4 +1,5 @@
 """Règle de dépendance (comme dans les services Basecamp) : domain <- application <- infrastructure/presentation."""
+
 import ast
 from pathlib import Path
 

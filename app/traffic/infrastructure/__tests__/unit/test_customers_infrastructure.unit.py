@@ -33,6 +33,7 @@ def client_recording(sent: list[httpx.Request], status: int = 200, body: object 
 
 # --- auth ----------------------------------------------------------------------------
 
+
 def test_register_and_login_post_the_credentials_under_api_auth() -> None:
     sent: list[httpx.Request] = []
     gateway = HttpxAuthGateway(client_recording(sent))
@@ -58,6 +59,7 @@ def test_login_response_exposes_the_json_body() -> None:
 
 # --- commandes -----------------------------------------------------------------------
 
+
 def test_create_order_sends_the_documented_body_and_idempotency_key() -> None:
     sent: list[httpx.Request] = []
     HttpxOrderGateway(client_recording(sent, 201, {"id": "o1"})).create_order(ORDER, "tg-0123456789", "jeton-abc", CID)
@@ -67,8 +69,13 @@ def test_create_order_sends_the_documented_body_and_idempotency_key() -> None:
     assert request.headers["Authorization"] == "Bearer jeton-abc"
     assert json.loads(request.content) == {
         "email": "client-1@example.com",
-        "shippingAddress": {"fullName": "Camille Martin", "line1": "12 rue des Alpes", "postalCode": "38000",
-                            "city": "Grenoble", "country": "FR"},
+        "shippingAddress": {
+            "fullName": "Camille Martin",
+            "line1": "12 rue des Alpes",
+            "postalCode": "38000",
+            "city": "Grenoble",
+            "country": "FR",
+        },
         "lines": [{"productId": "p1", "quantity": 1}, {"productId": "p2", "quantity": 1}],
     }
 
@@ -84,8 +91,10 @@ def test_payment_request_and_confirmation_paths_and_body() -> None:
     gateway = HttpxOrderGateway(client_recording(sent))
     gateway.request_payment("o1", "jeton-abc", CID)
     gateway.confirm_payment("o1", PaymentMethod.DECLINED, "jeton-abc", CID)
-    assert [(r.method, r.url.path) for r in sent] == [("POST", "/api/shop/orders/o1/pay"),
-                                                       ("POST", "/api/shop/orders/o1/pay/confirm")]
+    assert [(r.method, r.url.path) for r in sent] == [
+        ("POST", "/api/shop/orders/o1/pay"),
+        ("POST", "/api/shop/orders/o1/pay/confirm"),
+    ]
     assert not sent[0].content and json.loads(sent[1].content) == {"payment_method": "pm_test_declined"}
 
 
@@ -96,6 +105,7 @@ def test_my_orders_needs_the_token() -> None:
 
 
 # --- client sans cookies ---------------------------------------------------------------
+
 
 def test_client_never_keeps_cookies_between_visitors() -> None:
     seen: list[httpx.Request] = []
@@ -113,12 +123,13 @@ def test_client_never_keeps_cookies_between_visitors() -> None:
 
 # --- groupe de comptes -----------------------------------------------------------------
 
+
 def test_pool_lends_each_account_to_one_visitor_at_a_time() -> None:
     pool, rng = InMemoryAccountPool(), Random(1)
     assert pool.acquire(rng) is None
     pool.add(ACCOUNT)
     assert pool.acquire(rng) == ACCOUNT
-    assert pool.acquire(rng) is None          # prêté : plus disponible
+    assert pool.acquire(rng) is None  # prêté : plus disponible
     pool.release(ACCOUNT)
     assert pool.acquire(rng) == ACCOUNT
 
@@ -131,7 +142,7 @@ def test_pool_is_safe_under_concurrency() -> None:
         t.start()
     for t in threads:
         t.join()
-    taken: list[Account] = []
+    taken: list[Account | None] = []
     lock = threading.Lock()
 
     def take() -> None:
@@ -144,10 +155,12 @@ def test_pool_is_safe_under_concurrency() -> None:
         t.start()
     for t in takers:
         t.join()
-    assert len(taken) == 200 and None not in taken and len({a.email for a in taken}) == 200
+    accounts_taken = [a for a in taken if a is not None]
+    assert len(taken) == 200 and len(accounts_taken) == 200 and len({a.email for a in accounts_taken}) == 200
 
 
 # --- gestes maladroits -------------------------------------------------------------------
+
 
 def test_bad_query_listing_uses_an_unknown_category() -> None:
     from app.traffic.infrastructure.httpx_shop_gateway import HttpxShopGateway

@@ -2,6 +2,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 from random import Random
+from typing import Any
 
 import pytest
 
@@ -32,12 +33,19 @@ PRODUCTS = [ProductRef(f"p{i}", f"slug-{i}") for i in range(1, 7)]
 
 def browse(slip: float = 0.0, seed: int = 1, popularity=None) -> tuple[FakeShopGateway, TrafficReport]:
     gateway, report = FakeShopGateway(), TrafficReport()
-    BrowseShop(gateway, FakeTimer(), ThinkTimePolicy(1.0), SessionProfilePicker(DEFAULT_SESSION_PROFILES),
-               popularity=popularity, slip_probability=slip).execute(report, Random(seed))
+    BrowseShop(
+        gateway,
+        FakeTimer(),
+        ThinkTimePolicy(1.0),
+        SessionProfilePicker(DEFAULT_SESSION_PROFILES),
+        popularity=popularity,
+        slip_probability=slip,
+    ).execute(report, Random(seed))
     return gateway, report
 
 
 # --- Gestes maladroits dans la navigation -------------------------------------------------
+
 
 def test_without_slips_no_invalid_query_is_ever_sent() -> None:
     for seed in range(40):
@@ -70,21 +78,36 @@ def test_popularity_skews_the_viewed_products() -> None:
     for seed in range(300):
         gateway, _ = browse(popularity=PopularityPolicy(), seed=seed)
         views.update(arg for name, arg in gateway.calls if name == "get_product")
-    assert views["tente-a"] > 2 * views["gourde-f"]     # p1 est le mieux classé du catalogue de test, p6 le moins
+    assert views["tente-a"] > 2 * views["gourde-f"]  # p1 est le mieux classé du catalogue de test, p6 le moins
 
 
 def test_browse_shop_rejects_an_invalid_slip_probability() -> None:
     with pytest.raises(ValueError):
-        BrowseShop(FakeShopGateway(), FakeTimer(), ThinkTimePolicy(1.0), SessionProfilePicker(DEFAULT_SESSION_PROFILES),
-                   slip_probability=1.5)
+        BrowseShop(
+            FakeShopGateway(),
+            FakeTimer(),
+            ThinkTimePolicy(1.0),
+            SessionProfilePicker(DEFAULT_SESSION_PROFILES),
+            slip_probability=1.5,
+        )
 
 
 # --- Commande : abandons, rejeux, suivi ----------------------------------------------------
 
+
 def order_flow(orders: FakeOrderGateway, abandon=0.0, slip=0.0, decline=0.0) -> tuple[OrderFlow, TrafficReport]:
     timer = FakeTimer()
-    flow = OrderFlow(orders, timer, ThinkTimePolicy(1.0), AddressBook(), TokenBucket(timer, 600, 50), 1.0, decline,
-                     abandon_probability=abandon, slip_probability=slip)
+    flow = OrderFlow(
+        orders,
+        timer,
+        ThinkTimePolicy(1.0),
+        AddressBook(),
+        TokenBucket(timer, 600, 50),
+        1.0,
+        decline,
+        abandon_probability=abandon,
+        slip_probability=slip,
+    )
     return flow, TrafficReport()
 
 
@@ -164,21 +187,32 @@ def test_tracking_uses_the_right_email_when_there_are_no_slips() -> None:
 def test_extra_actions_respect_the_rate_limit() -> None:
     orders = FakeOrderGateway()
     timer = FakeTimer()
-    flow = OrderFlow(orders, timer, ThinkTimePolicy(1.0), AddressBook(), TokenBucket(timer, 6, 3), 1.0, 0.0,
-                     slip_probability=1.0)
-    place(flow, TrafficReport())             # 3 jetons pour la commande : plus rien pour le rejeu ni le suivi
+    flow = OrderFlow(
+        orders, timer, ThinkTimePolicy(1.0), AddressBook(), TokenBucket(timer, 6, 3), 1.0, 0.0, slip_probability=1.0
+    )
+    place(flow, TrafficReport())  # 3 jetons pour la commande : plus rien pour le rejeu ni le suivi
     assert orders.names().count("create_order") == 1 and "lookup_order" not in orders.names()
 
 
 def test_order_flow_rejects_invalid_realism_probabilities() -> None:
     timer = FakeTimer()
-    for kwargs in ({"abandon_probability": 2.0}, {"slip_probability": -1.0}):
+    invalid: tuple[dict[str, Any], ...] = ({"abandon_probability": 2.0}, {"slip_probability": -1.0})
+    for kwargs in invalid:
         with pytest.raises(ValueError):
-            OrderFlow(FakeOrderGateway(), timer, ThinkTimePolicy(1.0), AddressBook(), TokenBucket(timer, 6, 3), 1.0,
-                      0.0, **kwargs)
+            OrderFlow(
+                FakeOrderGateway(),
+                timer,
+                ThinkTimePolicy(1.0),
+                AddressBook(),
+                TokenBucket(timer, 6, 3),
+                1.0,
+                0.0,
+                **kwargs,
+            )
 
 
 # --- Inscription et connexion : erreurs de saisie -------------------------------------------
+
 
 class Env:
     def __init__(self, slip: float = 0.0, typo: float = 0.0, unknown: float = 0.0, accounts=None) -> None:
@@ -190,10 +224,20 @@ class Env:
         session = CustomerSession(self.auth, self.orders, guest, flow)
         limiter = TokenBucket(self.timer, 600, 50)
         self.fallback = FakeJourney()
-        self.new = NewCustomerJourney(self.auth, self.pool, limiter, AccountFactory(), session, self.fallback,
-                                      self.timer, self.think, slip_probability=slip)
-        self.returning = ReturningCustomerJourney(self.auth, self.pool, limiter, session, self.fallback, self.timer,
-                                                  self.think, typo, unknown)
+        self.new = NewCustomerJourney(
+            self.auth,
+            self.pool,
+            limiter,
+            AccountFactory(),
+            session,
+            self.fallback,
+            self.timer,
+            self.think,
+            slip_probability=slip,
+        )
+        self.returning = ReturningCustomerJourney(
+            self.auth, self.pool, limiter, session, self.fallback, self.timer, self.think, typo, unknown
+        )
         self.report = TrafficReport()
 
 

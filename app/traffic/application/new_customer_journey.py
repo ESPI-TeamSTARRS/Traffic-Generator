@@ -15,7 +15,7 @@ from app.traffic.domain.services.token_bucket import TokenBucket
 from app.traffic.domain.value_objects.account import Account
 
 REGISTER_AND_LOGIN_COST = 2
-DUPLICATE_REGISTRATION_SHARE = 0.5   # parmi les gestes maladroits : part des doubles clics sur « créer mon compte »
+DUPLICATE_REGISTRATION_SHARE = 0.5  # parmi les gestes maladroits : part des doubles clics sur « créer mon compte »
 
 
 class NewCustomerJourney:

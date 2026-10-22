@@ -149,12 +149,47 @@ Règle de dépendance vérifiée par `app/__tests__/unit/test_architecture.unit.
 
 ## Développement
 
+Python 3.12 (épinglé dans `.python-version`), gestion des dépendances avec uv.
+
 ```powershell
-uv run poe check    # ruff + tests (couverture minimale 80 %)
-uv run poe test
-uv run poe lint
-uv run poe format
+uv run poe quality    # lint (ruff), formatage (ruff format --check) et types (mypy) : ce que la CI rend bloquant
+uv run poe security   # audit des dépendances (pip-audit) : échoue dès une vulnérabilité connue
+uv run poe test       # tests et couverture (seuil 80 %)
+uv run poe check      # qualité, audit puis tests
+uv run poe format     # corrige le formatage
 ```
+
+### Hooks Git
+
+Trois hooks vérifient, sans jamais corriger les fichiers ni se contourner (`--no-verify` interdit). Installation, une fois :
+
+```powershell
+uv run pre-commit install --install-hooks
+```
+
+| Hook | Contrôles |
+|---|---|
+| `commit-msg` | message au format Conventional Commit : `<type>(<portée>)?: <description>` (types : feat, fix, docs, chore, refactor, test, ci, build, perf, style, revert) |
+| `pre-commit` | gitleaks sur l'index, puis lint et formatage |
+| `pre-push` | gitleaks sur les commits poussés (même plage que la CI), puis types et tests |
+
+Le hook `pre-push` demande le binaire `gitleaks` sur le PATH, en version 8.30.1 (la même que la CI) :
+voir [gitleaks](https://github.com/gitleaks/gitleaks#installing) (par exemple `winget install gitleaks`, ou `scoop install gitleaks`).
+
+### Intégration continue
+
+`.github/workflows/ci.yml` tourne sur chaque PR vers `main` et à chaque push sur `main`. Il rejoue les tâches des hooks :
+
+| Job | Contenu |
+|---|---|
+| `python` | installation figée (`uv sync`, Python 3.12, roues uniquement), `poe quality`, `poe test` (couverture ≥ 80 %), `poe security` |
+| `secrets-scan` | gitleaks (v8.30.1, archive vérifiée par son SHA-256) sur les seuls commits apportés par la PR ou le push |
+| `pr-title` | le titre de la PR respecte Conventional Commits (même script que le hook `commit-msg`) |
+| `ci-ok` | job final, **seul check à rendre obligatoire** dans la protection de la branche `main` |
+
+Pour rejouer la CI en local : `uv run poe check`. Les actions GitHub sont épinglées par SHA complet.
+
+Documentation détaillée : [runbook CI](docs/ci.md), [publier un changement](docs/publier.md), [retour arrière](docs/retour-arriere.md).
 
 ## Limites
 

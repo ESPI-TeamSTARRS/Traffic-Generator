@@ -12,9 +12,7 @@ MY_ORDERS_PROBABILITY = 0.5
 class CustomerSession:
     """Ce que fait un client connecté : consulte son profil, parcourt le catalogue, commande, relit ses commandes."""
 
-    def __init__(
-        self, auth: AuthGateway, orders: OrderGateway, browse: BrowseShop, order_flow: OrderFlow
-    ) -> None:
+    def __init__(self, auth: AuthGateway, orders: OrderGateway, browse: BrowseShop, order_flow: OrderFlow) -> None:
         self._auth = auth
         self._orders = orders
         self._browse = browse
