@@ -14,6 +14,10 @@ def test_parser_defaults_and_options() -> None:
     )
     assert (args.minutes, args.sessions_per_minute, args.seed) == (5.0, 10.0, 3)
     assert (args.day_minutes, args.refusal_rate, args.night_factor) == (30.0, 0.1, 0.15)
+    defaults = cli.build_parser().parse_args([])
+    assert (defaults.customers, defaults.typo_rate) == (0.25, 0.1)
+    assert (defaults.order_rate, defaults.decline_rate) == (0.12, 0.1)
+    assert (defaults.abandon_rate, defaults.slip_rate, defaults.bursts_per_hour) == (0.25, 0.03, 3.0)
 
 
 def test_format_report_names_network_errors() -> None:

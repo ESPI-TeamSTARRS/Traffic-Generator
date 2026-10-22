@@ -35,6 +35,10 @@ class FakeShopGateway:
         self._note("list_products", (category, page, page_size), correlation_id)
         return self._catalog
 
+    def list_products_with_bad_query(self, correlation_id: str) -> ShopResponse:
+        self._note("list_bad_query", None, correlation_id)
+        return ShopResponse(422)
+
     def get_product(self, slug: str, correlation_id: str) -> ShopResponse:
         self._note("get_product", slug, correlation_id)
         if self._default_status == 200 and slug not in KNOWN_SLUGS:

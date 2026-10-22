@@ -1,7 +1,7 @@
 from random import Random
 
-from app.traffic.application.browse_shop import BrowseShop
 from app.traffic.domain.entities.traffic_report import TrafficReport
+from app.traffic.domain.interfaces.journey import Journey
 from app.traffic.domain.interfaces.spawner import Spawner
 from app.traffic.domain.interfaces.timer import Timer
 from app.traffic.domain.services.load_profile import LoadProfile
@@ -17,8 +17,8 @@ class RunTraffic:
     tiré du générateur principal : une même graine redonne le même trafic.
     """
 
-    def __init__(self, browse: BrowseShop, timer: Timer, rng: Random, spawner: Spawner, load: LoadProfile) -> None:
-        self._browse = browse
+    def __init__(self, journey: Journey, timer: Timer, rng: Random, spawner: Spawner, load: LoadProfile) -> None:
+        self._journey = journey
         self._timer = timer
         self._rng = rng
         self._spawner = spawner
@@ -42,4 +42,4 @@ class RunTraffic:
 
     def _start_session(self, report: TrafficReport) -> None:
         visitor_rng = Random(self._rng.getrandbits(64))
-        self._spawner.spawn(lambda: self._browse.execute(report, visitor_rng))
+        self._spawner.spawn(lambda: self._journey.execute(report, visitor_rng))

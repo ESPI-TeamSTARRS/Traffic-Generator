@@ -50,7 +50,7 @@ select = ["E", "F", "I", "B", "UP", "S"]
 ignore = ["S311"]
 
 [tool.ruff.lint.per-file-ignores]
-"**/__tests__/**" = ["S101"]
+"**/__tests__/**" = ["S101", "S105", "S106", "S107"]  # faux jetons et mots de passe de test
 
 [tool.poe.tasks.normal]
 help = "Génère du trafic normal vers la pile (ex. : uv run poe normal --minutes 5 --sessions-per-minute 6)"
