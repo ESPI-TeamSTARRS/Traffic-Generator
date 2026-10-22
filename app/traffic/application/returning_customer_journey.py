@@ -36,8 +36,10 @@ class ReturningCustomerJourney:
         typo_probability: float,
         unknown_email_probability: float = 0.0,
     ) -> None:
-        for name, value in (("typo_probability", typo_probability),
-                            ("unknown_email_probability", unknown_email_probability)):
+        for name, value in (
+            ("typo_probability", typo_probability),
+            ("unknown_email_probability", unknown_email_probability),
+        ):
             if not 0 <= value <= 1:
                 raise ValueError(f"{name} must be between 0 and 1")
         self._auth = auth

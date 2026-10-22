@@ -3,6 +3,7 @@
 Vérifie le point demandé : le générateur ne déclenche jamais de 429 (limites de débit de Traefik) ni de verrouillage
 de compte (5 échecs de connexion d'affilée), même à un rythme élevé et pendant de longues durées simulées.
 """
+
 import argparse
 import json
 import sys
@@ -120,15 +121,22 @@ class FakeStack:
             ids = [line["productId"] for line in json.loads(request.content)["lines"]]
             known = {p["id"] for p in PRODUCTS}
             return (200, {}) if len(set(ids)) == len(ids) and set(ids) <= known else (422, {})
-        return 200, {"items": []}   # santé, mes commandes
+        return 200, {"items": []}  # santé, mes commandes
 
 
 def run(minutes: float, per_minute: float, seed: int = 1, **options) -> FakeStack:
     timer = FakeTimer()
     stack = FakeStack(timer)
     client = httpx.Client(base_url="http://gateway", transport=httpx.MockTransport(stack.handle))
-    args = argparse.Namespace(refusal_rate=0.03, customers=0.5, typo_rate=0.3, order_rate=0.8, decline_rate=0.2,
-                              abandon_rate=0.25, slip_rate=0.1)
+    args = argparse.Namespace(
+        refusal_rate=0.03,
+        customers=0.5,
+        typo_rate=0.3,
+        order_rate=0.8,
+        decline_rate=0.2,
+        abandon_rate=0.25,
+        slip_rate=0.1,
+    )
     for name, value in options.items():
         setattr(args, name, value)
     journey = cli.build_journey(args, client, timer)  # même assemblage que la CLI
@@ -141,11 +149,11 @@ def run(minutes: float, per_minute: float, seed: int = 1, **options) -> FakeStac
 def test_never_triggers_a_rate_limit_even_at_a_high_rate() -> None:
     stack = run(minutes=30, per_minute=120)
     assert stack.count(429) == 0
-    assert len(stack.statuses.get("/api/shop/orders", [])) > 20      # il commande bien
+    assert len(stack.statuses.get("/api/shop/orders", [])) > 20  # il commande bien
 
 
 def test_never_gets_close_to_the_lockout_threshold() -> None:
-    stack = run(minutes=60, per_minute=60, typo_rate=1.0)           # une faute de frappe à CHAQUE connexion
+    stack = run(minutes=60, per_minute=60, typo_rate=1.0)  # une faute de frappe à CHAQUE connexion
     assert stack.max_failures == 1
     logins = stack.statuses["/api/auth/login"]
     assert logins.count(401) > 20 and logins.count(200) >= logins.count(401)
@@ -153,8 +161,14 @@ def test_never_gets_close_to_the_lockout_threshold() -> None:
 
 def test_every_flow_is_exercised_end_to_end() -> None:
     stack = run(minutes=30, per_minute=60)
-    for path in ("/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/shop/orders",
-                 "/api/shop/me/orders", "/api/shop/products"):
+    for path in (
+        "/api/auth/register",
+        "/api/auth/login",
+        "/api/auth/me",
+        "/api/shop/orders",
+        "/api/shop/me/orders",
+        "/api/shop/products",
+    ):
         assert stack.statuses.get(path), path
     assert stack.count(500) == 0 and stack.count(0) == 0
 
@@ -170,7 +184,7 @@ def test_no_session_cookie_is_ever_sent() -> None:
 
 def test_accounts_are_reused_across_visits() -> None:
     stack = run(minutes=30, per_minute=60)
-    assert len(stack.statuses["/api/auth/login"]) > len(stack.accounts)   # plus de connexions que de comptes créés
+    assert len(stack.statuses["/api/auth/login"]) > len(stack.accounts)  # plus de connexions que de comptes créés
 
 
 def test_realistic_refusals_all_appear_and_stay_a_minority() -> None:
@@ -184,7 +198,7 @@ def test_realistic_refusals_all_appear_and_stay_a_minority() -> None:
 
 def test_idempotent_replay_returns_the_same_order() -> None:
     stack = run(minutes=60, per_minute=60, slip_rate=0.5, order_rate=1.0)
-    assert stack.statuses["/api/shop/orders"].count(200) > 0       # rejeu : 200 au lieu de 201
+    assert stack.statuses["/api/shop/orders"].count(200) > 0  # rejeu : 200 au lieu de 201
     assert len(stack.orders_by_key) == stack.statuses["/api/shop/orders"].count(201)
 
 

@@ -18,6 +18,7 @@ PRODUCTS = [ProductRef(f"p{i:02d}", f"slug-{i}") for i in range(1, 11)]
 
 # --- Pauses longues --------------------------------------------------------------------
 
+
 def test_long_pauses_stretch_the_tail_and_the_mean() -> None:
     plain, heavy = ThinkTimePolicy(2.0), ThinkTimePolicy(2.0, long_pause_probability=0.2, long_pause_mean_seconds=30)
     rng_a, rng_b = Random(1), Random(1)
@@ -35,6 +36,7 @@ def test_think_time_rejects_invalid_long_pauses(kwargs: dict) -> None:
 
 # --- Rafales ---------------------------------------------------------------------------
 
+
 def test_burst_covers_only_its_window() -> None:
     burst = Burst(start_seconds=100, duration_seconds=60, multiplier=2.5)
     assert [burst.covers(t) for t in (99, 100, 159, 160)] == [False, True, True, False]
@@ -48,7 +50,7 @@ def test_burst_rejects_invalid_values(args: tuple) -> None:
 
 def test_planner_makes_about_the_requested_number_of_bursts_without_overlap() -> None:
     counts = [len(BurstPlanner(per_hour=6).plan(Random(seed), 3600 * 10)) for seed in range(20)]
-    assert 40 <= sum(counts) / len(counts) <= 70   # ~6 par heure sur 10 h (marge : les rafales prennent du temps)
+    assert 40 <= sum(counts) / len(counts) <= 70  # ~6 par heure sur 10 h (marge : les rafales prennent du temps)
     bursts = BurstPlanner(per_hour=6).plan(Random(3), 3600 * 10)
     pairs = zip(bursts, bursts[1:], strict=False)
     assert all(a.start_seconds + a.duration_seconds <= b.start_seconds for a, b in pairs)
@@ -60,8 +62,9 @@ def test_planner_without_bursts_and_reproducible() -> None:
     assert BurstPlanner(per_hour=4).plan(Random(5), 7200) == BurstPlanner(per_hour=4).plan(Random(5), 7200)
 
 
-@pytest.mark.parametrize("kwargs", [{"per_hour": -1}, {"per_hour": 1, "min_duration_seconds": 0},
-                                    {"per_hour": 1, "min_multiplier": 1.0}])
+@pytest.mark.parametrize(
+    "kwargs", [{"per_hour": -1}, {"per_hour": 1, "min_duration_seconds": 0}, {"per_hour": 1, "min_multiplier": 1.0}]
+)
 def test_planner_rejects_invalid_configuration(kwargs: dict) -> None:
     with pytest.raises(ValueError):
         BurstPlanner(**kwargs)
@@ -71,17 +74,18 @@ def test_load_is_multiplied_during_a_burst_only() -> None:
     load = LoadProfile(bursts=[Burst(100, 60, 3.0), Burst(130, 60, 2.0)])
     assert load.factor(50) == 1.0
     assert load.factor(110) == 3.0
-    assert load.factor(150) == 3.0     # deux rafales qui se chevauchent : la plus forte l'emporte
+    assert load.factor(150) == 3.0  # deux rafales qui se chevauchent : la plus forte l'emporte
     assert load.factor(180) == 2.0
     assert load.factor(500) == 1.0
 
 
 def test_burst_stacks_on_the_day_night_cycle() -> None:
     load = LoadProfile(day_length_seconds=600, night_factor=0.2, bursts=[Burst(0, 60, 2.0)])
-    assert load.factor(0) == pytest.approx(0.4)    # nuit (0.2) x rafale (2)
+    assert load.factor(0) == pytest.approx(0.4)  # nuit (0.2) x rafale (2)
 
 
 # --- Popularité ------------------------------------------------------------------------
+
 
 def test_popularity_picks_distinct_products() -> None:
     picked = PopularityPolicy().pick(PRODUCTS, 4, Random(1))
@@ -111,6 +115,7 @@ def test_popularity_rejects_a_negative_exponent() -> None:
 
 
 # --- Comptes en erreur -----------------------------------------------------------------
+
 
 def test_unknown_email_is_unique_and_keeps_the_domain_and_password() -> None:
     account, rng = Account("client-abc@example.com", "Bivouac-0001-long-secret"), Random(1)

@@ -149,11 +149,14 @@ Règle de dépendance vérifiée par `app/__tests__/unit/test_architecture.unit.
 
 ## Développement
 
+Python 3.12 (épinglé dans `.python-version`), gestion des dépendances avec uv.
+
 ```powershell
-uv run poe check    # ruff + tests (couverture minimale 80 %)
-uv run poe test
-uv run poe lint
-uv run poe format
+uv run poe quality    # lint (ruff), formatage (ruff format --check) et types (mypy) : ce que la CI rend bloquant
+uv run poe security   # audit des dépendances (pip-audit) : échoue dès une vulnérabilité connue
+uv run poe test       # tests et couverture (seuil 80 %)
+uv run poe check      # qualité, audit puis tests
+uv run poe format     # corrige le formatage
 ```
 
 ## Limites

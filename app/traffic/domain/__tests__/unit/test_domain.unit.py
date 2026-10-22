@@ -51,8 +51,12 @@ def test_think_time_requires_positive_mean() -> None:
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"weight": 0}, {"listings": 0}, {"min_views": 3, "max_views": 2}, {"min_views": -1},
-        {"quote_probability": 1.2}, {"quote_probability": -0.1},
+        {"weight": 0},
+        {"listings": 0},
+        {"min_views": 3, "max_views": 2},
+        {"min_views": -1},
+        {"quote_probability": 1.2},
+        {"quote_probability": -0.1},
     ],
 )
 def test_session_profile_rejects_invalid_values(kwargs: dict) -> None:

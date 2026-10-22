@@ -13,9 +13,9 @@ from app.traffic.domain.services.token_bucket import TokenBucket
 from app.traffic.domain.value_objects.cart_line import CartLine
 from app.traffic.domain.value_objects.order_request import OrderRequest
 
-FIRST_ATTEMPT_COST = 3   # créer la commande, demander le paiement, le confirmer : 3 requêtes sous /api/shop/orders
-RETRY_COST = 2           # nouvelle demande de paiement et nouvelle confirmation
-EXTRA_COST = 1           # rejeu, double confirmation ou suivi : une requête de plus sous /api/shop/orders
+FIRST_ATTEMPT_COST = 3  # créer la commande, demander le paiement, le confirmer : 3 requêtes sous /api/shop/orders
+RETRY_COST = 2  # nouvelle demande de paiement et nouvelle confirmation
+EXTRA_COST = 1  # rejeu, double confirmation ou suivi : une requête de plus sous /api/shop/orders
 MAX_CART_LINES = 2
 RETRY_AFTER_DECLINE_PROBABILITY = 0.5
 LOOKUP_PROBABILITY = 0.15
@@ -141,15 +141,14 @@ class OrderFlow:
             response = self._orders.confirm_payment(order_id, PaymentMethod.SUCCESS, token, correlation_id)
             report.record(response.status_code)
 
-    def _track(
-        self, number: str | None, email: str, correlation_id: str, report: TrafficReport, rng: Random
-    ) -> None:
+    def _track(self, number: str | None, email: str, correlation_id: str, report: TrafficReport, rng: Random) -> None:
         """Suivi par numéro et email ; parfois une adresse erronée (404, identique à un numéro inconnu)."""
         if not number or rng.random() >= LOOKUP_PROBABILITY or not self._limiter.try_acquire(EXTRA_COST):
             return
         wrong = self._slip_probability > 0 and rng.random() < WRONG_EMAIL_LOOKUP_PROBABILITY
-        report.record(self._orders.lookup_order(number, email.replace("@", "-x@") if wrong else email,
-                                                correlation_id).status_code)
+        report.record(
+            self._orders.lookup_order(number, email.replace("@", "-x@") if wrong else email, correlation_id).status_code
+        )
 
     def _lines(self, products: list[ProductRef], rng: Random) -> tuple[CartLine, ...]:
         count = rng.randint(1, min(MAX_CART_LINES, len(products)))

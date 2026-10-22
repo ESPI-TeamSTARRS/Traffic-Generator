@@ -9,6 +9,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=2.4.0",
+    "pip-audit>=2.10.1",
     "poethepoet>=0.29.0",
     "pytest>=8.3.0",
     "pytest-cov>=5.0.0",
@@ -52,6 +54,13 @@ ignore = ["S311"]
 [tool.ruff.lint.per-file-ignores]
 "**/__tests__/**" = ["S101", "S105", "S106", "S107"]  # faux jetons et mots de passe de test
 
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+ignore_missing_imports = true
+warn_unreachable = true
+show_error_codes = true
+
 [tool.poe.tasks.normal]
 help = "Génère du trafic normal vers la pile (ex. : uv run poe normal --minutes 5 --sessions-per-minute 6)"
 cmd = "python -m app.traffic.presentation.cli"
@@ -68,6 +77,22 @@ cmd = "ruff check ."
 help = "Formate le code (ruff format)"
 cmd = "ruff format ."
 
+[tool.poe.tasks."format:check"]
+help = "Vérifie le formatage sans rien modifier (ruff format --check)"
+cmd = "ruff format --check ."
+
+[tool.poe.tasks.typecheck]
+help = "Vérifie les types (mypy)"
+cmd = "mypy"
+
+[tool.poe.tasks.security]
+help = "Audit des dépendances : échoue dès une vulnérabilité connue (pip-audit)"
+cmd = "pip-audit --skip-editable"
+
+[tool.poe.tasks.quality]
+help = "Lint, formatage et types (bloquant en CI)"
+sequence = ["lint", "format:check", "typecheck"]
+
 [tool.poe.tasks.check]
-help = "Lint puis tests"
-sequence = ["lint", "test"]
+help = "Qualité, audit des dépendances puis tests (ce que la CI exécute)"
+sequence = ["quality", "security", "test"]

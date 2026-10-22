@@ -1,4 +1,5 @@
 import threading
+from functools import partial
 
 import pytest
 
@@ -17,7 +18,7 @@ def test_runs_every_task_in_parallel_threads_and_waits_for_all() -> None:
 
     spawner = ThreadSpawner(max_workers=3)
     for index in range(3):
-        spawner.spawn(lambda i=index: task(i))
+        spawner.spawn(partial(task, index))
     spawner.wait()
     assert sorted(results) == [0, 1, 2]
     assert len(threads) == 3

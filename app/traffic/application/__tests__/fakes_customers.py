@@ -10,7 +10,7 @@ class FakeAuthGateway:
     """Enregistre les appels ; inscription 202, connexion 200 avec jeton si le mot de passe est celui du compte."""
 
     def __init__(self, register_status: int = 202) -> None:
-        self.calls: list[tuple[str, str]] = []   # (action, email ou jeton)
+        self.calls: list[tuple[str, str]] = []  # (action, email ou jeton)
         self.passwords: dict[str, str] = {}
         self.failed_logins = 0
         self._register_status = register_status
@@ -18,7 +18,7 @@ class FakeAuthGateway:
     def register(self, account: Account, correlation_id: str) -> ShopResponse:
         self.calls.append(("register", account.email))
         if "@" not in account.email or len(account.password) < 12:
-            return ShopResponse(422)        # adresse invalide ou mot de passe trop court
+            return ShopResponse(422)  # adresse invalide ou mot de passe trop court
         if self._register_status == 202:
             self.passwords.setdefault(account.email, account.password)
         return ShopResponse(self._register_status)

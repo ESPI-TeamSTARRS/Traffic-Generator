@@ -35,8 +35,17 @@ IDEMPOTENCY_KEY = re.compile(r"^[A-Za-z0-9_.-]{8,128}$")  # contrat de POST /ord
 class Env:
     """Assemble les parcours avec des faux, sur un temps simulé."""
 
-    def __init__(self, order_prob=1.0, decline_prob=0.0, typo_prob=0.0, auth=None, orders=None,
-                 accounts=None, order_burst=4, auth_burst=20):
+    def __init__(
+        self,
+        order_prob=1.0,
+        decline_prob=0.0,
+        typo_prob=0.0,
+        auth=None,
+        orders=None,
+        accounts=None,
+        order_burst=4,
+        auth_burst=20,
+    ):
         self.timer = FakeTimer()
         self.think = ThinkTimePolicy(1.0)
         self.auth = auth or FakeAuthGateway()
@@ -46,14 +55,24 @@ class Env:
         self.auth_limiter = TokenBucket(self.timer, 40, auth_burst)
         self.order_limiter = TokenBucket(self.timer, 8, order_burst)
         self.guest = BrowseShop(self.shop, self.timer, self.think, SessionProfilePicker(DEFAULT_SESSION_PROFILES))
-        self.flow = OrderFlow(self.orders, self.timer, self.think, AddressBook(), self.order_limiter,
-                              order_prob, decline_prob)
+        self.flow = OrderFlow(
+            self.orders, self.timer, self.think, AddressBook(), self.order_limiter, order_prob, decline_prob
+        )
         self.session = CustomerSession(self.auth, self.orders, self.guest, self.flow)
         self.fallback = FakeJourney()
-        self.new = NewCustomerJourney(self.auth, self.pool, self.auth_limiter, AccountFactory(), self.session,
-                                      self.fallback, self.timer, self.think)
-        self.returning = ReturningCustomerJourney(self.auth, self.pool, self.auth_limiter, self.session,
-                                                  self.fallback, self.timer, self.think, typo_prob)
+        self.new = NewCustomerJourney(
+            self.auth,
+            self.pool,
+            self.auth_limiter,
+            AccountFactory(),
+            self.session,
+            self.fallback,
+            self.timer,
+            self.think,
+        )
+        self.returning = ReturningCustomerJourney(
+            self.auth, self.pool, self.auth_limiter, self.session, self.fallback, self.timer, self.think, typo_prob
+        )
         self.report = TrafficReport()
 
 
@@ -62,6 +81,7 @@ def account(n: int = 1) -> Account:
 
 
 # --- OrderFlow ---------------------------------------------------------------------
+
 
 def place(env: Env, seed: int = 1, token: str | None = "jeton-x") -> None:
     env.flow.place(PRODUCTS, "a@example.com", token, "cid-12345678", env.report, Random(seed))
@@ -102,8 +122,8 @@ def test_order_probability_zero_never_orders() -> None:
 
 def test_order_is_skipped_without_enough_rate_tokens() -> None:
     env = Env(order_burst=4)
-    place(env, 1)   # consomme 3 jetons sur 4
-    place(env, 2)   # il n'en reste qu'un (aucun temps écoulé) : il renonce
+    place(env, 1)  # consomme 3 jetons sur 4
+    place(env, 2)  # il n'en reste qu'un (aucun temps écoulé) : il renonce
     assert env.orders.names().count("create_order") == 1
 
 
@@ -130,7 +150,7 @@ def test_a_failed_payment_request_skips_confirmation() -> None:
 def test_declined_payment_can_be_retried_with_success() -> None:
     methods = set()
     for seed in range(40):
-        env = Env(decline_prob=1.0, order_burst=5)   # 3 jetons pour la commande + 2 pour le réessai
+        env = Env(decline_prob=1.0, order_burst=5)  # 3 jetons pour la commande + 2 pour le réessai
         place(env, seed)
         methods.add(tuple(env.orders.methods))
     assert (PaymentMethod.DECLINED,) in methods
@@ -138,7 +158,7 @@ def test_declined_payment_can_be_retried_with_success() -> None:
 
 
 def test_retry_after_decline_respects_the_rate_limit() -> None:
-    env = Env(decline_prob=1.0, order_burst=3)   # 3 jetons : la commande les consomme tous, pas de réessai possible
+    env = Env(decline_prob=1.0, order_burst=3)  # 3 jetons : la commande les consomme tous, pas de réessai possible
     for seed in range(20):
         env.timer.current += 3600
         place(env, seed)
@@ -158,6 +178,7 @@ def test_order_flow_rejects_invalid_probabilities(kwargs: dict) -> None:
 
 
 # --- NewCustomerJourney ------------------------------------------------------------
+
 
 def test_new_customer_registers_logs_in_then_shops() -> None:
     env = Env()
@@ -183,12 +204,13 @@ def test_failed_registration_stops_there_and_adds_no_account() -> None:
 
 def test_new_customer_falls_back_to_a_guest_when_the_auth_bucket_is_empty() -> None:
     env = Env(auth_burst=2)
-    env.auth_limiter.try_acquire(2)            # seau vide
+    env.auth_limiter.try_acquire(2)  # seau vide
     env.new.execute(env.report, Random(1))
     assert env.fallback.runs == 1 and env.auth.calls == []
 
 
 # --- ReturningCustomerJourney ------------------------------------------------------
+
 
 def test_returning_customer_without_account_falls_back() -> None:
     env = Env()
@@ -247,7 +269,7 @@ def test_account_is_released_even_if_the_visit_crashes() -> None:
 def test_returning_customer_gives_the_account_back_and_falls_back_without_tokens() -> None:
     known = account()
     env = Env(accounts=[known], auth_burst=2, typo_prob=1.0)
-    env.auth_limiter.try_acquire(2)             # seau vide
+    env.auth_limiter.try_acquire(2)  # seau vide
     env.returning.execute(env.report, Random(1))
     assert env.fallback.runs == 1 and env.pool.released == [known] and env.auth.calls == []
 
@@ -259,12 +281,13 @@ def test_returning_customer_rejects_an_invalid_typo_probability() -> None:
 
 def test_failed_login_after_a_typo_does_not_shop() -> None:
     known = account()
-    env = Env(accounts=[known], typo_prob=1.0)   # compte inconnu d'auth : les deux connexions échouent
+    env = Env(accounts=[known], typo_prob=1.0)  # compte inconnu d'auth : les deux connexions échouent
     env.returning.execute(env.report, Random(1))
     assert "me" not in env.auth.names() and env.orders.calls == []
 
 
 # --- CustomerSession, JourneyMix, TokenParser ---------------------------------------
+
 
 def test_customer_session_reads_profile_browses_orders_and_may_list_orders() -> None:
     env = Env()
